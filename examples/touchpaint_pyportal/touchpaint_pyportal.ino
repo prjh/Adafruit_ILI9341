@@ -1,49 +1,26 @@
-/***************************************************
-  This is our touchscreen painting example for the Adafruit ILI9341 Breakout
-  ----> http://www.adafruit.com/products/1770
-
-  Check out the links above for our tutorials and wiring diagrams
-  These displays use SPI to communicate, 4 or 5 pins are required to
-  interface (RST is optional)
-  Adafruit invests time and resources providing this open source code,
-  please support Adafruit and open-source hardware by purchasing
-  products from Adafruit!
-
-  Written by Limor Fried/Ladyada for Adafruit Industries.
-  MIT license, all text above must be included in any redistribution
- ****************************************************/
-
-/** NOT FOR USE WITH THE TOUCH SHIELD, ONLY FOR THE BREAKOUT! **/
-
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <SPI.h>
-#include <Adafruit_ILI9341.h>
+#include "Adafruit_ILI9341.h"
 #include "TouchScreen.h"
 
-// These are the four touchscreen analog pins
-#define YP A2  // must be an analog pin, use "An" notation!
-#define XM A3  // must be an analog pin, use "An" notation!
-#define YM 9   // can be any digital pin
-#define XP 8   // can be any digital pin
-
-// This is calibration data for the raw touch data to the screen coordinates
-#define TS_MINX 150
-#define TS_MINY 120
-#define TS_MAXX 920
-#define TS_MAXY 940
-
-#define MINPRESSURE 10
-#define MAXPRESSURE 1000
-
-// The display uses hardware SPI, plus #9 & #10
-#define TFT_CS 10
-#define TFT_DC 9
-Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
-
-// For better pressure precision, we need to know the resistance
-// between X+ and X- Use any multimeter to read it
-// For the one we're using, its 300 ohms across the X plate
+#define YP A4
+#define XM A7
+#define YM A6
+#define XP A5
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
+#define X_MIN  325
+#define X_MAX  750
+#define Y_MIN  840
+#define Y_MAX  240
+
+// Pin settings for PyPortal
+#define TFT_D0        34 // Data bit 0 pin (MUST be on PORT byte boundary)
+#define TFT_WR        26 // Write-strobe pin (CCL-inverted timer output)
+#define TFT_DC        10 // Data/command pin
+#define TFT_CS        11 // Chip-select pin
+#define TFT_RST       24 // Reset pin
+#define TFT_RD         9 // Read-strobe pin
+#define TFT_BACKLIGHT 25
+// ILI9341 with 8-bit parallel interface:
+Adafruit_ILI9341 tft = Adafruit_ILI9341(tft8bitbus, TFT_D0, TFT_WR, TFT_DC, TFT_CS, TFT_RST, TFT_RD);
 
 // Size of the color selection boxes and the paintbrush size
 #define BOXSIZE 40
@@ -52,11 +29,13 @@ int oldcolor, currentcolor;
 
 void setup(void) {
  // while (!Serial);     // used for leonardo debugging
- 
+
+  delay(100);
   Serial.begin(9600);
   Serial.println(F("Touch Paint!"));
-  
+
   tft.begin();
+
   tft.fillScreen(ILI9341_BLACK);
   
   // make the color selection boxes
@@ -70,37 +49,27 @@ void setup(void) {
   // select the current color 'red'
   tft.drawRect(0, 0, BOXSIZE, BOXSIZE, ILI9341_WHITE);
   currentcolor = ILI9341_RED;
+
+  pinMode(TFT_BACKLIGHT, OUTPUT);
+  digitalWrite(TFT_BACKLIGHT, HIGH);
+
 }
 
 
 void loop()
 {
-  // Retrieve a point  
   TSPoint p = ts.getPoint();
-  
- /*
-  Serial.print("X = "); Serial.print(p.x);
-  Serial.print("\tY = "); Serial.print(p.y);
-  Serial.print("\tPressure = "); Serial.println(p.z);  
- */
-  
   // we have some minimum pressure we consider 'valid'
   // pressure of 0 means no pressing!
-  if (p.z < MINPRESSURE || p.z > MAXPRESSURE) {
-     return;
+  if ((p.z < 100) || (p.z > 1000)) {
+    return;
   }
-  
-  // Scale from ~0->1000 to tft.width using the calibration #'s
-  p.x = map(p.x, TS_MINX, TS_MAXX, 0, tft.width());
-  p.y = map(p.y, TS_MINY, TS_MAXY, 0, tft.height());
+  Serial.print("X = "); Serial.print(p.x);
+  Serial.print("\tY = "); Serial.print(p.y);
+  Serial.print("\tPressure = "); Serial.println(p.z);
+  p.x = map(p.x, X_MIN, X_MAX, 0, 240);
+  p.y = map(p.y, Y_MIN, Y_MAX, 0, 320);
 
-  /*
-  Serial.print("("); Serial.print(p.x);
-  Serial.print(", "); Serial.print(p.y);
-  Serial.println(")");
-  */
-
-    
   if (p.y < BOXSIZE) {
      oldcolor = currentcolor;
 
